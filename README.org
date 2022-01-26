@@ -5,7 +5,7 @@
 [[https://github.com/MArpogaus/stplf-bnf/network/members][https://img.shields.io/github/forks/MArpogaus/stplf-bnf.svg?style=flat-square]]
 [[https://github.com/MArpogaus/stplf-bnf/stargazers][https://img.shields.io/github/stars/MArpogaus/stplf-bnf.svg?style=flat-square]]
 [[https://github.com/MArpogaus/stplf-bnf/issues][https://img.shields.io/github/issues/MArpogaus/stplf-bnf.svg?style=flat-square]]
-[[https://github.com/MArpogaus/stplf-bnf/blob/master/LICENSE][https://img.shields.io/github/license/MArpogaus/stplf-bnf.svg?style=flat-square]]
+[[https://github.com/MArpogaus/stplf-bnf/blob/master/COPYING][https://img.shields.io/github/license/MArpogaus/stplf-bnf.svg?style=flat-square]]
 [[https://linkedin.com/in/MArpogaus][https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555]]
 
 * Short-Term Probabilistic Load Forecasting using Conditioned Bernstein-Polynomial Normalizing Flows (STPLF-BNF)
