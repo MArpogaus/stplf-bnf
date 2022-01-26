@@ -1,0 +1,28 @@
+- !!python/object/apply:tensorflow.keras.callbacks.ModelCheckpoint
+  kwds:
+    filepath: !join [$base_path, '/mcp/weights']
+    monitor:  val_loss
+    mode: auto
+    verbose: true
+    save_best_only: true
+    save_weights_only: true
+- !!python/object/apply:tensorflow.keras.callbacks.EarlyStopping
+    kwds:
+      monitor: val_loss
+      mode: auto
+      patience: 9
+      restore_best_weights: true
+      verbose: true
+- !!python/object/apply:tensorflow.keras.callbacks.ReduceLROnPlateau
+    kwds:
+      monitor: val_loss
+      mode: auto
+      patience: 3
+      verbose: true
+     # min_delta: 0.1
+      factor: 0.1
+      #min_lr: !product [$lr, 0.00001]
+- !!python/object/apply:tensorflow.keras.callbacks.CSVLogger
+    kwds:
+      filename: !join [$base_path, '/log.csv']
+      append: false

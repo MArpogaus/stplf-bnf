@@ -1,0 +1,52 @@
+seed: !store [seed, 42]
+name: &name feed_forward_normal_distribution
+
+data_loader: !!python/name:bernstein_paper.data.cer_data_loader.load_data
+data_loader_kwds: !include shared/data_loader_kwds.yaml
+
+model_checkpoints: !join 
+  - !store 
+    - base_path
+    - !join
+      - ./logs/
+      - *name
+  - '/mcp'
+
+mlflow:
+  log_artifacts: $base_path
+  set_tags:
+    name: *name
+    architecture: paper
+
+model: !!python/object/apply:bernstein_paper.models.feed_forward.build_model
+  kwds:
+    history_shape: !!python/tuple [$history_size, 1]
+    meta_shape: !!python/tuple [1, !sum [2, 2, 1]]
+    output_shape: !!python/tuple [$horizon_size, 2]
+    hidden_layers: !include shared/feed_forward_hidden_layers.yaml
+    batch_normalization: true
+    name: *name
+
+compile_kwds:
+  loss: !!python/object/apply:bernstein_paper.losses.NegativeLogarithmicLikelihood
+    kwds:
+      distribution_class: &distribution_class !!python/name:bernstein_paper.distributions.NormalDistribution
+  optimizer: !!python/object/apply:tensorflow.keras.optimizers.Adam
+    kwds:
+      lr: !store [lr, 0.0001]
+  metrics: !switchcmd
+    evaluate:
+      - !!python/object/apply:bernstein_paper.metrics.MeanAbsoluteError
+        kwds:
+          distribution_class: *distribution_class
+          scale: &max_load !include ../../data/stats/train_max_load
+      - !!python/object/apply:bernstein_paper.metrics.MeanSquaredError
+        kwds:
+          distribution_class: *distribution_class
+          scale: *max_load
+      - !!python/object/apply:bernstein_paper.metrics.ContinuousRankedProbabilityScore
+        kwds:
+          distribution_class: *distribution_class
+          scale: *max_load
+
+fit_kwds: !include shared/fit_kwds.yaml

@@ -1,0 +1,3 @@
+epochs: 300
+validation_freq: 1
+callbacks: !include callbacks.yaml

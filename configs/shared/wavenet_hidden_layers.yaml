@@ -1,0 +1,1 @@
+- {units: 1024, activation: elu, kernel_initializer: he_normal}

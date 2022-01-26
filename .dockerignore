@@ -1,0 +1,5 @@
+./logs
+./configs
+./ipynb
+Dockerfile
+docker-compose.yaml

@@ -1,0 +1,190 @@
+# Inspired by: https://github.com/othneildrew/Best-README-Template
+#+OPTIONS: toc:nol
+
+[[https://github.com/MArpogaus/stplf-bnf/graphs/contributors][https://img.shields.io/github/contributors/MArpogaus/stplf-bnf.svg?style=flat-square]]
+[[https://github.com/MArpogaus/stplf-bnf/network/members][https://img.shields.io/github/forks/MArpogaus/stplf-bnf.svg?style=flat-square]]
+[[https://github.com/MArpogaus/stplf-bnf/stargazers][https://img.shields.io/github/stars/MArpogaus/stplf-bnf.svg?style=flat-square]]
+[[https://github.com/MArpogaus/stplf-bnf/issues][https://img.shields.io/github/issues/MArpogaus/stplf-bnf.svg?style=flat-square]]
+[[https://github.com/MArpogaus/stplf-bnf/blob/master/LICENSE][https://img.shields.io/github/license/MArpogaus/stplf-bnf.svg?style=flat-square]]
+[[https://linkedin.com/in/MArpogaus][https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555]]
+
+* Short-Term Probabilistic Load Forecasting using Conditioned Bernstein-Polynomial Normalizing Flows (STPLF-BNF)
+
+#+TOC: headlines 2 local
+
+** About The Project
+:PROPERTIES:
+:CUSTOM_ID: about-the-project
+:END:
+This repository contains the Python code to reproduce the results of our paper [[https://arxiv.org/search/?query=Marcel%20Arpogaus&searchtype=author][Probabilistic Short-Term Low-Voltage Load Forecasting using Bernstein-Polynomial Normalizing Flows]].
+
+In the study we compared the combinations of two different neural network architectures with four different methods to model the conditional marginal distributions in 24h-ahead forecasting.
+
+We use public data from /363/ smart meter customers of the [[http://www.ucd.ie/issda/data/commissionforenergyregulationcer/][CER dataset]] to train the models.
+
+** Abstract
+  :PROPERTIES:
+  :CUSTOM_ID: abstract
+  :END:
+The transition to a fully renewable energy grid requires better forecasting of demand at the low-voltage level.
+However, high fluctuations and increasing electrification cause huge forecast errors with traditional point estimates.
+Probabilistic load forecasts take future uncertainties into account and thus enables various applications in low-carbon energy systems.
+We propose an approach for flexible conditional density forecasting of short-term load based on Bernstein-Polynomial Normalizing Flows where a neural network controls the parameters of the flow.
+In an empirical study with 363 smart meter customers, our density predictions compare favorably against Gaussian and Gaussian mixture densities and also outperform a non-parametric approach based on the pinball loss for 24h-ahead load forecasting for two different neural network architectures.
+** Getting Started
+:PROPERTIES:
+:CUSTOM_ID: getting-started
+:END:
+
+To get a local copy up and running follow these simple example steps.
+
+*** Prerequisites
+    :PROPERTIES:
+    :CUSTOM_ID: prerequisites
+    :END:
+The project uses the following python packages:
+
+- [[https://github.com/iterative/dvc][=dvc=]]
+- [[https://github.com/matplotlib/matplotlib][=matplotlib=]]
+- [[https://github.com/mlflow/mlflow][=mlflow=]]
+- [[https://github.com/numpy/numpy][=numpy=]]
+- [[https://github.com/pandas-dev/pandas][=pandas=]]
+- [[https://github.com/scipy/scipy][=scipy=]]
+- [[https://github.com/seaborn/seaborn][=seaborn=]]
+- [[https://github.com/tensorflow/tensorflow][=tensorflow=]]
+- [[https://github.com/tensorflow/probability][=tensorflow_probability=]]
+
+and my implementation of [[https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector][Bernstein-Polynomials as TensorFlow Probability Bijector]] and my small CLI tool to run these [[https://github.com/MArpogaus/tensorflow-experiments][TensorFlow Experiments]].
+
+The dependencies are defined in the respective =setup.py= and are automatically installed by conda, when the experiments are reproduced as described below.
+
+*** Dataset Description
+    :PROPERTIES:
+    :CUSTOM_ID: dataset-description
+    :END:
+The models were trained on a [[http://www.ucd.ie/issda/data/commissionforenergyregulationcer/][dataset]] containing electricity demand information for smart meter customers in Ireland, recorded in the period from /2009/07/14/ until /2010/12/31/, in a resolution of 30 Minutes.
+
+[[https://dvc.org/][Data Version Control System]] was used to version the data and build a ML pipline with data cleansing, feature generation, training and evaluation:
+
+[[file:gfx/dag.svg]]
+
+**** Data preprocessing
+     :PROPERTIES:
+     :CUSTOM_ID: data-preprocessing
+     :END:
+
+- =scripts/prepar.py= is used to prepare the dataset.
+
+  First non-residential buildings a dropped, since the stochastic behavior of residential customers was from explicit interest in this study.
+  Then all incomplete records are removed. Optionally random subset (10% / 363 customers in the paper) is extracted.
+
+- =scripts/features.py= is used to add additional features like holiday or weather information.
+
+- =scripts/split.py= is used to split the date into a train and test set.
+
+  All records until /2010/10/31 23:30:00/ have been used for training, the remaining readings were left out for testing.
+
+- =scripts/validate_data.py= finally applies some sanity checks and extracts descriptive statistics.
+
+**** Data shape
+     :PROPERTIES:
+     :CUSTOM_ID: data-shape
+     :END:
+At runtime, the data is shuffled and batched into mini batches of size =32=. Each sample consists of an input tuple =x = (x_h,x_m)= containing the /historical/ data =x_h=, with the lagged electric load of the past seven days and /meta/ data =x_m=, with [[https://www.avanwyk.com/encoding-cyclical-features-for-deep-learning/][trigonometric encoded time information]] and a binary holiday indicator.
+The prediction target =y= is the load for the next day, with resolution of =30= minutes. Hence, the model predicts =48= conditional densities =p(y_1|x), ..., p(y_48|x)= for every future time step.
+
+*** Reproduce experiments
+    :PROPERTIES:
+    :CUSTOM_ID: reproduce-experiments
+    :END:
+A [[https://docs.conda.io/en/latest/miniconda.html][anaconda environment]] (=conda_env.yaml=) in combination with an [[https://www.mlflow.org/docs/latest/projects.html][MLFlow project]] (=MLProject=) is provided for easy reproducibility.
+
+#+begin_quote
+  /Note:/ The MLProject is used to reproduce the DVC pipeline described in =dvc.yaml=.
+  Its is possible to use =dvc repro= directly, but then the required packages from =conda_env.yaml= have to be installed manually beforehand.
+#+end_quote
+
+Follow these steps to setup and prepare the experiments.
+
+1. First ensure that you have a working anaconda or miniconda
+   installation.
+2. Create a new conda environment and install mlflow
+   #+begin_src shell
+     conda create -n stplf-bnf
+     conda activate stplf-bnf
+     pip install mlflow dvc
+   #+end_src
+
+3. clone this repo
+   #+begin_src shell
+     git clone https://github.com/MArpogaus/stplf-bnf.git ./exp
+     cd exp
+   #+end_src
+
+4. Add your copy of the [[http://www.ucd.ie/issda/data/commissionforenergyregulationcer/][CER Smart Meter dataset]] and extract it to =data/raw/=. Then [[https://dvc.org/doc/start/data-and-model-versioning][add it to DVC]].
+
+If everything went well the provided MLFlow project can be executed to reproduce the [[https://dvc.org/doc/start/data-pipelines][dvc pipline]].
+#+begin_src shell
+    mlflow run .
+#+end_src
+
+** License
+:PROPERTIES:
+:CUSTOM_ID: license
+:END:
+Distributed under the [[file:COPYING][GNU GPLv3 License]]
+
+Copyright (C) 2022 Marcel Arpogaus
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+** Contact
+:PROPERTIES:
+:CUSTOM_ID: contact
+:END:
+[[https://github.com/MArpogaus][Marcel Arpogaus]] - [[mailto:marcel.arpogaus@gmail.com][marcel.arpogaus@gmail.com]]
+
+Project Link:
+[[https://github.com/MArpogaus/stplf-bnf]]
+
+** Acknowledgments
+:PROPERTIES:
+:CUSTOM_ID: acknowledgments
+:END:
+Parts of this work have been funded by the Federal Ministry for the Environment, Nature Conservation and Nuclear Safety due to a decision of the German Federal Parliament (AI4Grids: 67KI2012A).
+
+Public data from the /CER Smart Metering Project - Electricity Customer Behaviour Trial, 2009-2010 Accessed via the Irish Social Science Data Archive - www.ucd.ie/issda/ was used in the development of this project.
+
+** Cite
+
+Please consider citing our work in all publications and presentations if the code provided in dis repository was involved.
+*** ICML Paper
+#+begin_src bibtex
+@inproceedings{Arpogaus2021,
+  title={Probabilistic Short-Term Low-Voltage Load Forecasting using Bernstein-Polynomial Normalizing Flows},
+  author={Arpogaus, Marcel and Voß, Marcus and Sick, Beate and Nigge-Uricher, Mark and Dürr, Oliver},
+  booktitle={ICML 2021 Workshop on Tackling Climate Change with Machine Learning},
+  url={https://www.climatechange.ai/papers/icml2021/20},
+  year={2021}
+}
+#+end_src
+*** Code
+#+begin_src bibtex
+@software{Arpogaus2021,
+  title = {Short-Term Probabilistic Load Forecasting using Conditioned Bernstein-Polynomial Normalizing Flows},
+  author = {Marcel Arpogaus},
+  date = {2022-01-20},
+  url = {https://github.com/MArpogaus/stplf-bnf}
+}
+#+end_src
