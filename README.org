@@ -44,15 +44,15 @@ To get a local copy up and running follow these simple example steps.
     :END:
 The project uses the following python packages:
 
-- [[https://github.com/iterative/dvc][=dvc=]]
-- [[https://github.com/matplotlib/matplotlib][=matplotlib=]]
-- [[https://github.com/mlflow/mlflow][=mlflow=]]
-- [[https://github.com/numpy/numpy][=numpy=]]
-- [[https://github.com/pandas-dev/pandas][=pandas=]]
-- [[https://github.com/scipy/scipy][=scipy=]]
-- [[https://github.com/seaborn/seaborn][=seaborn=]]
-- [[https://github.com/tensorflow/tensorflow][=tensorflow=]]
-- [[https://github.com/tensorflow/probability][=tensorflow_probability=]]
+- [[https://github.com/iterative/dvc][dvc]]
+- [[https://github.com/matplotlib/matplotlib][matplotlib]]
+- [[https://github.com/mlflow/mlflow][mlflow]]
+- [[https://github.com/numpy/numpy][numpy]]
+- [[https://github.com/pandas-dev/pandas][pandas]]
+- [[https://github.com/scipy/scipy][scipy]]
+- [[https://github.com/seaborn/seaborn][seaborn]]
+- [[https://github.com/tensorflow/tensorflow][tensorflow]]
+- [[https://github.com/tensorflow/probability][tensorflow_probability]]
 
 and my implementation of [[https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector][Bernstein-Polynomials as TensorFlow Probability Bijector]] and my small CLI tool to run these [[https://github.com/MArpogaus/tensorflow-experiments][TensorFlow Experiments]].
 
@@ -168,8 +168,8 @@ Public data from the /CER Smart Metering Project - Electricity Customer Behaviou
 
 ** Cite
 
-Please consider citing our work in all publications and presentations if the code provided in dis repository was involved.
-*** ICML Paper
+Please consider citing our work in all publications and presentations if the code provided in this repository was involved.
+*** ICML Workshop Paper
 #+begin_src bibtex
 @inproceedings{Arpogaus2021,
   title={Probabilistic Short-Term Low-Voltage Load Forecasting using Bernstein-Polynomial Normalizing Flows},
