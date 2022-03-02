@@ -4,12 +4,11 @@ channels:
   - conda-forge
 dependencies:
   - python==3.8
+  - mlflow
+  - dvc
+  - holidays==0.13
   - pip
   - pip:
-      - tensorboard==2.4.1
-      - tensorflow==2.4.1
-      - mlflow
-      - dvc[webdav]
-      - git+https://github.com/MArpogaus/tensorflow-experiments.git@dev
-      - git+https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git@1358eb6
+      - wwo-hist==0.0.7
+      - git+https://github.com/MArpogaus/tensorflow-experiments.git@6e8b74dc2e912321ebc43ccdd11cc31accc870d3
       - .

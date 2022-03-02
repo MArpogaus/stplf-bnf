@@ -35,8 +35,6 @@ setup(
     install_requires=[
         "tensorflow==2.4.1",
         "tensorflow_probability==0.12.2",
-        "matplotlib==3.3.4",
-        "seaborn==0.11.1",
-        "numpy==1.19.2",
+        "bernstein_flow @ git+https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git@1358eb6"
     ],
 )
