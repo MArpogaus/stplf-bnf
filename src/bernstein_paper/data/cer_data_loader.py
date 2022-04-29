@@ -3,8 +3,8 @@
 # file    : cer_data_loader.py
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
-# created : 2022-01-20 10:49:40 (Marcel Arpogaus)
-# changed : 2022-01-20 15:47:03 (Marcel Arpogaus)
+# created : 2021-07-29 17:57:39 (Marcel Arpogaus)
+# changed : 2022-03-12 11:10:57 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # This file is part of the project "short-term probabilistic load
 # forecasting using conditioned Bernstein-polynomial normalizing flows"
@@ -26,13 +26,45 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
+
 import os
-from functools import partial
 
 import pandas as pd
+from tensorflow_time_series_dataset import WindowedTimeSeriesDatasetFactory
+from tensorflow_time_series_dataset.loaders import CSVDataLoader
+from tensorflow_time_series_dataset.preprocessors import (
+    CyclicalFeatureEncoder, GroupbyDatasetGenerator, TimeSeriesSplit)
 
-from .dataset import WindowedTimeSeriesDataSet
-from .splitter import TimeSeriesSplit
+enc_kwds = {
+    "weekday": dict(cycl_max=6),
+    "dayofyear": dict(cycl_max=366, cycl_min=1),
+    "month": dict(cycl_max=12, cycl_min=1),
+    "time": dict(
+        cycl_max=24 * 60 - 1,
+        cycl_getter=lambda df, k: df.index.hour * 60 + df.index.minute,
+    ),
+}
+
+
+def get_factory(data_stats_path: str, meta_columns, scale_load, **kwds):
+    factory = WindowedTimeSeriesDatasetFactory(meta_columns=meta_columns, **kwds)
+
+    for name, kwds in enc_kwds.items():
+        if name + "_sin" in meta_columns and name + "_cos" in meta_columns:
+            factory.add_preprocessor(CyclicalFeatureEncoder(name, **kwds))
+
+    if scale_load:
+        data_stats_file = os.path.join(data_stats_path, "train.csv")
+        data_stats = pd.read_csv(data_stats_file, index_col=0)
+        load_max = data_stats.loc["max", "load"]
+
+        def load_scaler(data):
+            data = data.copy()
+            data.load = data.load.apply(lambda x: x / load_max)
+            return data
+
+        factory.add_preprocessor(load_scaler)
+    return factory
 
 
 def load_data(
@@ -41,7 +73,7 @@ def load_data(
     history_size,
     prediction_size,
     history_columns=["load", "is_holiday", "tempC"],
-    meta_columns=["is_holiday", "weekday"],
+    meta_columns=["is_holiday"],
     prediction_columns=["load"],
     splits=["train", "validate", "test"],
     shift=None,
@@ -50,6 +82,8 @@ def load_data(
     cycle_length=10,
     shuffle_buffer_size=1000,
     seed=42,
+    test_mode=False,
+    scale_load=True,
 ):
     """
     Loads the preprocessed CER data and build the dataset.
@@ -94,31 +128,24 @@ def load_data(
                 from csv file in `data_path` for the given `spits`.
     :rtype:     dict
     """
-
     # common ##################################################################
     data = {}
-
-    data_stats_file = os.path.join(data_stats_path, "train.csv")
-    data_stats = pd.read_csv(data_stats_file, index_col=0)
-    load_max = data_stats.loc["max", "load"]
-
-    column_transformers = {}
-    column_transformers["load"] = lambda x: x / load_max
-    column_transformers["weekday"] = lambda x: x / 6
-
-    make_dataset = partial(
-        WindowedTimeSeriesDataSet,
+    factory_kwds = dict(
+        data_stats_path=data_stats_path,
         history_size=history_size,
         prediction_size=prediction_size,
         history_columns=history_columns,
         meta_columns=meta_columns,
         prediction_columns=prediction_columns,
         shift=shift,
-        batch_size=32,
+        batch_size=batch_size,
         cycle_length=cycle_length,
         shuffle_buffer_size=shuffle_buffer_size,
         seed=seed,
-        column_transformers=column_transformers,
+        scale_load=scale_load,
+    )
+    gdg = GroupbyDatasetGenerator(
+        "id", columns=history_columns + meta_columns + prediction_columns
     )
 
     # train data ##############################################################
@@ -126,25 +153,34 @@ def load_data(
     test_data_path = os.path.join(data_path, "test.csv")
 
     if "train" in splits:
+        train_factory = get_factory(**factory_kwds)
         if validation_split is not None:
-            data_splitter = TimeSeriesSplit(1 - validation_split, TimeSeriesSplit.LEFT)
-        else:
-            data_splitter = None
-
-        data["train"] = make_dataset(
-            file_path=train_data_path, data_splitter=data_splitter
-        )()
+            train_factory.add_preprocessor(
+                TimeSeriesSplit(1 - validation_split, TimeSeriesSplit.LEFT)
+            )
+        train_factory.add_preprocessor(gdg)
+        train_factory.set_data_loader(CSVDataLoader(file_path=train_data_path))
+        data["train"] = train_factory.get_dataset()
 
     # validation data #########################################################
     if "validate" in splits and validation_split is not None:
-        data_splitter = TimeSeriesSplit(1 - validation_split, TimeSeriesSplit.RIGHT)
-
-        data["validate"] = make_dataset(
-            file_path=train_data_path, data_splitter=data_splitter
-        )()
+        validation_factory = get_factory(**factory_kwds)
+        if validation_split is not None:
+            validation_factory.add_preprocessor(
+                TimeSeriesSplit(1 - validation_split, TimeSeriesSplit.RIGHT)
+            )
+        validation_factory.add_preprocessor(gdg)
+        validation_factory.set_data_loader(CSVDataLoader(file_path=train_data_path))
+        data["validate"] = validation_factory.get_dataset()
 
     # test data ###############################################################
     if "test" in splits:
-        data["test"] = make_dataset(file_path=test_data_path)()
+        test_factory = get_factory(**factory_kwds)
+        test_factory.add_preprocessor(gdg)
+        test_factory.set_data_loader(CSVDataLoader(file_path=test_data_path))
+        data["test"] = test_factory.get_dataset()
+
+    if len(data.keys()) == 0:
+        raise ValueError("Invalid splits")
 
     return data

@@ -3,8 +3,8 @@
 # file    : quantile_regression_distribution_wrapper.py
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
-# created : 2022-01-20 10:49:40 (Marcel Arpogaus)
-# changed : 2022-01-20 15:47:03 (Marcel Arpogaus)
+# created : 2021-07-29 17:57:39 (Marcel Arpogaus)
+# changed : 2021-12-16 09:54:05 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # This file is part of the project "short-term probabilistic load
 # forecasting using conditioned Bernstein-polynomial normalizing flows"
@@ -27,29 +27,30 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
 
+
 # REQUIRED PYTHON MODULES #####################################################
-import numpy as np
-
-import scipy.interpolate as spi
-
 import tensorflow as tf
-
+import tensorflow_probability as tfp
 from tensorflow_probability import distributions as tfd
+from tensorflow_probability.python.internal import (
+    dtype_util,
+    prefer_static,
+    reparameterization,
+    tensor_util,
+    tensorshape_util,
+)
 
-from tensorflow_probability.python.internal import dtype_util
-from tensorflow_probability.python.internal import tensor_util
-from tensorflow_probability.python.internal import tensorshape_util
-from tensorflow_probability.python.internal import prefer_static
-from tensorflow_probability.python.internal import reparameterization
-
-from ..losses import PinballLoss
+from bernstein_paper.math.interpolate import interp1d
+from bernstein_paper.math.activations import cumsum_fn
 
 
 class QuantileRegressionDistributionWrapper(tfd.Distribution):
     def __init__(
         self,
         quantiles,
-        constrain_quantiles=PinballLoss.constrain_quantiles,
+        min_quantile_level=None,
+        max_quantile_level=None,
+        constrain_quantiles=cumsum_fn,
         validate_args=False,
         allow_nan_stats=True,
         name="QuantileDistributionWrapper",
@@ -62,11 +63,23 @@ class QuantileRegressionDistributionWrapper(tfd.Distribution):
                 quantiles, dtype=dtype, name="quantiles"
             )
 
-            assert self.quantiles.shape[-1] == 100, "100 Qunatiles reqired"
+            if min_quantile_level is None:
+                self.min_quantile_level = dtype_util.eps(dtype)
+            else:
+                self.min_quantile_level = min_quantile_level
+            self.min_quantile_level = tensor_util.convert_nonref_to_tensor(
+                self.min_quantile_level, dtype=dtype, name="min_quantile_level"
+            )
+
+            if max_quantile_level is None:
+                self.max_quantile_level = 1.0 - self.min_quantile_level
+            else:
+                self.max_quantile_level = max_quantile_level
+            self.max_quantile_level = tensor_util.convert_nonref_to_tensor(
+                self.max_quantile_level, dtype=dtype, name="max_quantile_level"
+            )
 
             self.quantiles = constrain_quantiles(self.quantiles)
-
-            self._cdf_sp, self._quantile_sp = self.make_interp_spline()
 
             super().__init__(
                 dtype=dtype,
@@ -76,76 +89,9 @@ class QuantileRegressionDistributionWrapper(tfd.Distribution):
                 name=name,
             )
 
-    def make_interp_spline(self):
-        """
-        Generates the Spline Interpolation.
-        """
-        quantiles = self.quantiles.numpy().copy()
-
-        # Spline interpolation for cdf and dist
-        x = quantiles
-        x = x.reshape(-1, x.shape[-1])
-        y = np.linspace(0.0, 1.0, 100, dtype=np.float32)
-
-        x_min = np.min(x, axis=-1)
-        x_max = np.max(x, axis=-1)
-
-        cdf_sp = [
-            spi.interp1d(y=np.squeeze(y), x=np.squeeze(x[i]), kind="linear")
-            for i in range(x.shape[0])
-        ]
-
-        def cdf_sp_fn(x):
-            y = []
-            z_clip = np.clip(x, x_min, x_max)
-            for i, ip in enumerate(cdf_sp):
-                y.append(ip(z_clip[..., i]).astype(np.float32))
-            y = np.stack(y, axis=-1)
-            return y
-
-        # linear interpolation for quantiles
-        # clamp extreme values to value range of dtype
-        float_min = np.finfo(np.float32).min * np.ones_like(quantiles[..., :1])
-        float_max = np.finfo(np.float32).max * np.ones_like(quantiles[..., -1:])
-
-        y = np.concatenate([float_min, quantiles, float_max], axis=-1)
-        y = y.reshape(-1, y.shape[-1])
-
-        tol = 1e-20
-        percentiles = np.linspace(tol, 1.0 - tol, 100, dtype=np.float32)
-        x = np.concatenate([np.zeros(1), percentiles, np.ones(1)], axis=-1)
-
-        quantile_sp = [
-            spi.interp1d(y=np.squeeze(y[i]), x=np.squeeze(x), kind="linear")
-            for i in range(y.shape[0])
-        ]
-
-        def quantile_sp_fn(p):
-            q = []
-            p_clip = np.clip(p, np.zeros_like(x_min), np.ones_like(x_max))
-            for i, ip in enumerate(quantile_sp):
-                q.append(ip(p_clip[..., i]).astype(np.float32))
-            q = np.stack(q, axis=-1)
-            return q
-
-        return cdf_sp_fn, quantile_sp_fn
-
     def reshape_out(self, sample_shape, y):
         output_shape = prefer_static.broadcast_shape(sample_shape, self.batch_shape)
         return tf.reshape(y, output_shape)
-
-    def _eval_spline(self, x, attr):
-        x = np.asarray(x, dtype=np.float32)
-        batch_rank = tensorshape_util.rank(self.batch_shape)
-        sample_shape = x.shape
-
-        if x.shape[-batch_rank:] == self.batch_shape:
-            shape = list(x.shape[:-batch_rank]) + [-1]
-            x = tf.reshape(x, shape)
-        else:
-            x = x[..., None]
-
-        return self.reshape_out(sample_shape, getattr(self, attr)(x))
 
     def _batch_shape(self):
         shape = tf.TensorShape(prefer_static.shape(self.quantiles)[:-1])
@@ -155,30 +101,78 @@ class QuantileRegressionDistributionWrapper(tfd.Distribution):
         return tf.TensorShape([])
 
     def _log_prob(self, x):
-        return np.log(self.prob(x))
+        return tf.math.log(self.prob(x))
 
-    def _prob(self, x, dx=1e-2):
-        dy = self.cdf(x + dx) - self.cdf(x - dx)
-        return self.reshape_out(x.shape, dy / 2.0 / dx)
+    def _prob(self, x):
+        x_shape = prefer_static.shape(x)
+        dx = 1e-2
+        dy = self.cdf(x + dx) - self.cdf(x - dx) + dtype_util.eps(self.dtype)
+        return self.reshape_out(x_shape, dy / 2.0 / dx)
 
     def _log_cdf(self, x):
-        return np.log(self.cdf(x))
+        return tf.math.log(self.cdf(x))
 
+    @tf.function
     def _cdf(self, x):
-        return self._eval_spline(x, "_cdf_sp")
+        batch_rank = tensorshape_util.rank(self.batch_shape)
+        x_shape = prefer_static.shape(x)
+        output_shape = prefer_static.broadcast_shape(x_shape, self.batch_shape)
+        q = self.quantiles
+        y = tf.linspace(self.min_quantile_level, self.max_quantile_level, q.shape[-1])
 
-    def _mean(self):
-        return self.quantile(0.5)
+        # broadcast to final shape
+        x = tf.broadcast_to(x, output_shape)
+        sample_shape = x_shape[:-batch_rank]
+        sample_rank = tf.rank(sample_shape)
+        # if x in the shape form [S,BE], where S is sample_shape and BE is batch_shape,
+        # we need to transpose it to [BE, S]
+        needs_transpose = sample_rank > 0 and tf.reduce_any(
+            x_shape[:batch_rank] != self.batch_shape
+        )
+        if needs_transpose:
+            perm = tf.concat(
+                [
+                    tf.range(sample_rank, batch_rank + sample_rank),
+                    tf.range(0, sample_rank),
+                ],
+                0,
+            )
+            x = tf.transpose(x, perm)  # [B, S]
+        elif tf.reduce_all(x_shape[:batch_rank] == self.batch_shape):
+            x = x[
+                ..., tf.newaxis
+            ]  # tf.reshape(x, self.batch_shape.as_list() + [-1])  # [B, 1]
+
+        res = interp1d(
+            q,
+            y,
+            x,
+            tf.convert_to_tensor(0.0, dtype=self.dtype),
+            tf.convert_to_tensor(1.0, dtype=self.dtype),
+        )
+
+        if needs_transpose:
+            perm = tf.concat(
+                [
+                    tf.range(batch_rank, batch_rank + sample_rank),
+                    tf.range(0, batch_rank),
+                ],
+                0,
+            )
+            res = tf.transpose(res, perm)
+
+        return self.reshape_out(x_shape, res)
 
     def _quantile(self, p):
-        # input_shape = p.shape
-        # q = self.quantiles
-        # perm = tf.concat([[q.ndim - 1], tf.range(0, q.ndim - 1)], 0)
-        # q = tfp.math.interp_regular_1d_grid(
-        #     p,
-        #     x_ref_min=0.,
-        #     x_ref_max=1.,
-        #     y_ref=tf.transpose(q, perm),
-        #     axis=0)
-        # return self.reshape_out(input_shape, q)
-        return self._eval_spline(p, "_quantile_sp")
+        input_shape = prefer_static.shape(p)
+        q = tfp.math.batch_interp_regular_1d_grid(
+            p[..., None],
+            x_ref_min=self.min_quantile_level,
+            x_ref_max=self.max_quantile_level,
+            y_ref=self.quantiles,
+            fill_value_below=self.dtype.min,
+            fill_value_above=self.dtype.max,
+            axis=-1,
+        )
+
+        return self.reshape_out(input_shape, q)

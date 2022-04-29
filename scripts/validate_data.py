@@ -3,8 +3,8 @@
 # file    : validate_data.py
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
-# created : 2022-01-20 10:49:40 (Marcel Arpogaus)
-# changed : 2022-01-20 15:47:03 (Marcel Arpogaus)
+# created : 2021-03-26 17:48:56 (Marcel Arpogaus)
+# changed : 2021-04-21 16:02:41 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # This file is part of the project "short-term probabilistic load
 # forecasting using conditioned Bernstein-polynomial normalizing flows"

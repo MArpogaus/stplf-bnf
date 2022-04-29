@@ -6,3 +6,6 @@
 /feed_forward_gmm.yaml
 /feed_forward_quantile_regression.yaml
 /feed_forward_bernstein_flow.yaml
+/wavenet_gaussian_mixture_model.yaml
+/feed_forward_gaussian_mixture_model.yaml
+/baseline.yaml

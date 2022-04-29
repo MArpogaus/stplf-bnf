@@ -2,97 +2,107 @@ stages:
   prepare:
     cmd: python scripts/prepare.py data/raw
     deps:
-    - data/raw/File1.txt
-    - data/raw/File2.txt
-    - data/raw/File3.txt
-    - data/raw/File4.txt
-    - data/raw/File5.txt
-    - data/raw/File6.txt
-    - data/raw/SME and Residential allocations.txt
-    - scripts/prepare.py
+      - data/raw/File1.txt
+      - data/raw/File2.txt
+      - data/raw/File3.txt
+      - data/raw/File4.txt
+      - data/raw/File5.txt
+      - data/raw/File6.txt
+      - data/raw/SME and Residential allocations.txt
+      - scripts/prepare.py
     params:
-    - scripts/params.yaml:
-      - prepare.seed
-      - prepare.subset
+      - scripts/params.yaml:
+          - prepare.seed
+          - prepare.subset
     outs:
-    - data/prepared/data.csv
+      - data/prepared/data.csv
   features:
     cmd: python scripts/features.py data/prepared/data.csv
     deps:
-    - data/prepared/data.csv
-    - scripts/features.py
+      - data/prepared/data.csv
+      - scripts/features.py
     params:
-    - scripts/params.yaml:
-      - features.generate
+      - scripts/params.yaml:
+          - features.generate
     outs:
-    - data/features/data.csv
+      - data/features/data.csv
   split:
     cmd: python scripts/split.py data/features/data.csv
     deps:
-    - data/features/data.csv
-    - scripts/split.py
+      - data/features/data.csv
+      - scripts/split.py
     params:
-    - scripts/params.yaml:
-      - split.test_size
+      - scripts/params.yaml:
+          - split.test_size
     outs:
-    - data/split/test.csv
-    - data/split/train.csv
+      - data/split/test.csv
+      - data/split/train.csv
   stats:
     cmd: python scripts/validate_data.py data/split/test.csv data/split/train.csv
     deps:
-    - data/split/test.csv
-    - data/split/train.csv
-    - scripts/validate_data.py
+      - data/split/test.csv
+      - data/split/train.csv
+      - scripts/validate_data.py
     outs:
-    - data/stats/test.csv
-    - data/stats/test_max_load
-    - data/stats/train.csv
-    - data/stats/train_max_load
+      - data/stats/test.csv
+      - data/stats/test_max_load
+      - data/stats/train.csv
+      - data/stats/train_max_load
   fit:
     foreach:
       - feed_forward_bernstein_flow
-      - feed_forward_gmm
+      - feed_forward_gaussian_mixture_model
       - feed_forward_normal_distribution
       - feed_forward_quantile_regression
       - wavenet_bernstein_flow
-      - wavenet_gmm
+      - wavenet_gaussian_mixture_model
       - wavenet_normal_distribution
       - wavenet_quantile_regression
     do:
-      cmd: tfexp fit configs/${item}.yaml
+      cmd: python scripts/train.py configs/${item}.yaml configs/shared/data_loader_kwds.yaml logs
       deps:
-      - conda_env.yaml
-      - configs/${item}.yaml
-      - configs/shared
-      - data/split/train.csv
-      - data/stats/train.csv
-      - data/stats/train_max_load
-      - src
+        - conda_env.yaml
+        - setup.py
+        - configs/${item}.yaml
+        - configs/shared
+        - data/split/train.csv
+        - data/stats/train.csv
+        - data/stats/train_max_load
+        - src
+        - scripts/train.py
+      params:
+        - scripts/params.yaml:
+            - test_mode
       plots:
-      - logs/${item}/log.csv
+        - logs/${item}/log.csv
       outs:
-      - logs/${item}/mcp
+        - logs/${item}/mcp
   evaluate:
     foreach:
       - feed_forward_bernstein_flow
-      - feed_forward_gmm
+      - feed_forward_gaussian_mixture_model
       - feed_forward_normal_distribution
       - feed_forward_quantile_regression
       - wavenet_bernstein_flow
-      - wavenet_gmm
+      - wavenet_gaussian_mixture_model
       - wavenet_normal_distribution
       - wavenet_quantile_regression
+      - baseline
     do:
-      cmd: python scripts/evaluate.py configs/${item}.yaml metrics/${item}.yaml
+      cmd: python scripts/evaluate.py configs/${item}.yaml configs/shared/data_loader_kwds.yaml logs metrics/${item}.yaml
       deps:
-      - conda_env.yaml
-      - configs/${item}.yaml
-      - configs/shared
-      - data/split/test.csv
-      - data/stats/train.csv
-      - data/stats/train_max_load
-      - logs/${item}/mcp
-      - scripts/evaluate.py
-      - src
+        - conda_env.yaml
+        - setup.py
+        - configs/${item}.yaml
+        - configs/shared
+        - data/split/test.csv
+        - data/stats/train.csv
+        - data/stats/train_max_load
+        - logs/${item}
+        - scripts/evaluate.py
+        - src
+      params:
+        - scripts/params.yaml:
+            - test_mode
       metrics:
-      - metrics/${item}.yaml
+        - metrics/${item}.yaml

@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-01-20 10:49:40 (Marcel Arpogaus)
-# changed : 2022-01-20 15:47:03 (Marcel Arpogaus)
+# changed : 2022-01-20 10:54:37 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # This file is part of the project "short-term probabilistic load
 # forecasting using conditioned Bernstein-polynomial normalizing flows"
@@ -33,8 +33,7 @@ setup(
     packages=find_packages("src"),
     package_dir={"": "src"},
     install_requires=[
-        "tensorflow==2.4.1",
-        "tensorflow_probability==0.12.2",
-        "bernstein_flow @ git+https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git@1358eb6"
+        "bernstein_flow @ git+https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git@6d35a72",
+        "tensorflow_time_series_dataset @ git+https://github.com/MArpogaus/tensorflow_timeseries_dataset.git@f5202d2",
     ],
 )

@@ -1,17 +1,13 @@
 data_path: data/split
 data_stats_path: data/stats
-history_size: !store [history_size, !product [48, 7]]
-prediction_size: !store [horizon_size, !product [48, 1]]
-shift: $horizon_size
+history_size: 336 # 48 * 7
+prediction_size: &horizon_size 48
+shift: *horizon_size
 history_columns: ["load"]
 meta_columns:
   ["dayofyear_sin", "dayofyear_cos", "weekday_sin", "weekday_cos", "is_holiday"]
 prediction_columns: ["load"]
 validation_split: 0.1
-batch_size: 128
+batch_size: 32
 cycle_length: 10
 shuffle_buffer_size: 100
-seed: $seed
-splits: !switchcmd
-  fit: ["train", "validate"]
-  evaluate: ["test"]

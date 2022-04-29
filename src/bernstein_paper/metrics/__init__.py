@@ -3,8 +3,8 @@
 # file    : __init__.py
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
-# created : 2022-01-20 10:49:40 (Marcel Arpogaus)
-# changed : 2022-01-20 15:47:03 (Marcel Arpogaus)
+# created : 2021-07-29 17:57:39 (Marcel Arpogaus)
+# changed : 2021-12-06 19:29:04 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # This file is part of the project "short-term probabilistic load
 # forecasting using conditioned Bernstein-polynomial normalizing flows"
@@ -26,6 +26,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
+
 from .mean_absolute_error import MeanAbsoluteError
 from .mean_squared_error import MeanSquaredError
+from .mean_quantile_score import MeanQuantileScore
+from .median_absolute_error import MedianAbsoluteError
+from .median_squared_error import MedianSquaredError
 from .continuous_ranked_probability_score import ContinuousRankedProbabilityScore

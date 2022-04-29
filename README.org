@@ -5,6 +5,7 @@
 [[https://github.com/MArpogaus/stplf-bnf/network/members][https://img.shields.io/github/forks/MArpogaus/stplf-bnf.svg?style=flat-square]]
 [[https://github.com/MArpogaus/stplf-bnf/stargazers][https://img.shields.io/github/stars/MArpogaus/stplf-bnf.svg?style=flat-square]]
 [[https://github.com/MArpogaus/stplf-bnf/issues][https://img.shields.io/github/issues/MArpogaus/stplf-bnf.svg?style=flat-square]]
+[[https://arxiv.org/abs/][https://img.shields.io/badge/arXiv--B31B1B.svg?style=flat-square]]
 [[https://github.com/MArpogaus/stplf-bnf/blob/master/COPYING][https://img.shields.io/github/license/MArpogaus/stplf-bnf.svg?style=flat-square]]
 [[https://linkedin.com/in/MArpogaus][https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555]]
 
@@ -16,21 +17,27 @@
 :PROPERTIES:
 :CUSTOM_ID: about-the-project
 :END:
-This repository contains the Python code to reproduce the results of our paper [[https://arxiv.org/search/?query=Marcel%20Arpogaus&searchtype=author][Probabilistic Short-Term Low-Voltage Load Forecasting using Bernstein-Polynomial Normalizing Flows]].
+This repository contains the Python code to reproduce the results of our paper [[][Short-Term Density Forecasting of Low-Voltage Load using Bernstein-Polynomial Normalizing Flows]]
+a follow-up work extending our previous publication [[https://arxiv.org/search/?query=Marcel%20Arpogaus&searchtype=author][Probabilistic Short-Term Low-Voltage Load Forecasting using Bernstein-Polynomial Normalizing Flows]].
 
 In the study we compared the combinations of two different neural network architectures with four different methods to model the conditional marginal distributions in 24h-ahead forecasting.
+The following example shows the 99% and 60% confidence intervals, along with the median (blue) of the predicted conditional probability densities and the measured observations (orange) for one household with unusual high load during the Christmas week.
 
-We use public data from /363/ smart meter customers of the [[http://www.ucd.ie/issda/data/commissionforenergyregulationcer/][CER dataset]] to train the models.
+[[file:gfx/plf.svg]]
+
+We use public data from /363/ smart meter customers of the [[http://www.ucd.ie/issda/data/commissionforenergyregulationcer/][CER dataset]] to train and evaluate the models.
 
 ** Abstract
   :PROPERTIES:
   :CUSTOM_ID: abstract
   :END:
-The transition to a fully renewable energy grid requires better forecasting of demand at the low-voltage level.
-However, high fluctuations and increasing electrification cause huge forecast errors with traditional point estimates.
-Probabilistic load forecasts take future uncertainties into account and thus enables various applications in low-carbon energy systems.
-We propose an approach for flexible conditional density forecasting of short-term load based on Bernstein-Polynomial Normalizing Flows where a neural network controls the parameters of the flow.
-In an empirical study with 363 smart meter customers, our density predictions compare favorably against Gaussian and Gaussian mixture densities and also outperform a non-parametric approach based on the pinball loss for 24h-ahead load forecasting for two different neural network architectures.
+
+The transition to a fully renewable energy grid requires better forecasting of demand at the low-voltage level to increase efficiency and ensure reliable control.
+However, high fluctuations and increasing electrification cause huge forecast variability, not reflected in traditional point estimates.
+Probabilistic load forecasts take future uncertainties into account and thus allow more informed decision-making for the planning and operation of low-carbon energy systems.
+We propose an approach for flexible conditional density forecasting of short-term load based on Bernstein polynomial normalizing flows, where a neural network controls the parameters of the flow. In an empirical study with 363 smart meter customers, our density predictions compare favorably against Gaussian and Gaussian mixture densities.
+Also, they outperform a non-parametric approach based on the pinball loss for 24h-ahead load forecasting for two different neural network architectures.
+
 ** Getting Started
 :PROPERTIES:
 :CUSTOM_ID: getting-started
@@ -64,7 +71,7 @@ The dependencies are defined in the respective =setup.py= and are automatically 
     :END:
 The models were trained on a [[http://www.ucd.ie/issda/data/commissionforenergyregulationcer/][dataset]] containing electricity demand information for smart meter customers in Ireland, recorded in the period from /2009/07/14/ until /2010/12/31/, in a resolution of 30 Minutes.
 
-[[https://dvc.org/][Data Version Control System]] was used to version the data and build a ML pipline with data cleansing, feature generation, training and evaluation:
+[[https://dvc.org/][Data Version Control System]] was used to version the data and build an ML-pipeline with data cleansing, feature generation, training and evaluation:
 
 [[file:gfx/dag.svg]]
 
@@ -108,14 +115,14 @@ Follow these steps to setup and prepare the experiments.
 
 1. First ensure that you have a working anaconda or miniconda
    installation.
-2. Create a new conda environment and install mlflow
+2. Create a new conda environment and install MLFlow and dvc
    #+begin_src shell
      conda create -n stplf-bnf
      conda activate stplf-bnf
      pip install mlflow dvc
    #+end_src
 
-3. clone this repo
+3. clone this repository
    #+begin_src shell
      git clone https://github.com/MArpogaus/stplf-bnf.git ./exp
      cd exp
@@ -126,6 +133,28 @@ Follow these steps to setup and prepare the experiments.
 If everything went well the provided MLFlow project can be executed to reproduce the [[https://dvc.org/doc/start/data-pipelines][dvc pipline]].
 #+begin_src shell
     mlflow run .
+#+end_src
+
+After the MLFlow pipeline was reproduced you can show the results with:
+
+#+begin_src bash
+dvc metrics show --show-md
+#+end_src
+
+This should print out the metrics of the following table:
+
+#+begin_src org
+| Path                                             | continuous_ranked_probability_score |       loss | mean_quantile_score | median_absolute_error | median_squared_error |
+|--------------------------------------------------+-------------------------------------+------------+---------------------+-----------------------+----------------------|
+| metrics/feed_forward_bernstein_flow.yaml         |                             0.01696 | -130.30296 |             0.01678 |               0.32215 |               0.6905 |
+| metrics/feed_forward_gaussian_mixture_model.yaml |                             0.01697 | -129.05446 |             0.01679 |               0.32317 |              0.41046 |
+| metrics/feed_forward_normal_distribution.yaml    |                             0.01918 |   -98.8528 |             0.01897 |               0.35269 |               0.6313 |
+| metrics/feed_forward_quantile_regression.yaml    |                             0.01685 | -119.47409 |             0.01667 |                0.3195 |               0.4099 |
+| metrics/wavenet_bernstein_flow.yaml              |                             0.01709 | -133.62024 |             0.01691 |               0.32437 |              0.56243 |
+| metrics/wavenet_gaussian_mixture_model.yaml      |                             0.01798 | -127.82545 |              0.0178 |               0.33884 |              0.49286 |
+| metrics/wavenet_normal_distribution.yaml         |                              0.0182 | -104.14383 |             0.01801 |               0.34255 |              0.37162 |
+| metrics/wavenet_quantile_regression.yaml         |                             0.01776 | -115.97292 |             0.01757 |               0.32931 |              0.43222 |
+| metrics/baseline.yaml                            |                                   - | -101.34346 |               0.023 |               0.43612 |              0.68262 |
 #+end_src
 
 ** License
@@ -153,7 +182,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 :PROPERTIES:
 :CUSTOM_ID: contact
 :END:
-[[https://github.com/MArpogaus][Marcel Arpogaus]] - [[mailto:marcel.arpogaus@gmail.com][marcel.arpogaus@gmail.com]]
+[[https://github.com/MArpogaus][Marcel Arpogaus]] - [[mailto:marcel.arpogaus@htwg-konstanz.com][marcel.arpogaus@htwg-konstanz.com]]
 
 Project Link:
 [[https://github.com/MArpogaus/stplf-bnf]]
@@ -162,7 +191,7 @@ Project Link:
 :PROPERTIES:
 :CUSTOM_ID: acknowledgments
 :END:
-Parts of this work have been funded by the Federal Ministry for the Environment, Nature Conservation and Nuclear Safety due to a decision of the German Federal Parliament (AI4Grids: 67KI2012A).
+Parts of this work have been funded by the Federal Ministry for the Environment, Nature Conservation and Nuclear Safety due to a decision of the German Federal Parliament (AI4Grids: 67KI2012A), by the Federal Ministry for Economic Affairs and Energy (BMWi) within the program SINTEG as part of the showcase region WindNODE (03SIN539) and by the Federal Ministry of Education and Research of Germany (BMBF) in the project DeepDoubt (grant no. 01IS19083A).
 
 Public data from the /CER Smart Metering Project - Electricity Customer Behaviour Trial, 2009-2010 Accessed via the Irish Social Science Data Archive - www.ucd.ie/issda/ was used in the development of this project.
 

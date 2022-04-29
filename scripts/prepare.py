@@ -1,10 +1,10 @@
 # -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
 # AUTHOR INFORMATION ##########################################################
-# file    : prepare.py
+# file    : preprocessing.py
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
-# created : 2022-01-20 10:49:40 (Marcel Arpogaus)
-# changed : 2022-01-20 15:47:03 (Marcel Arpogaus)
+# created : 2021-03-26 11:32:07 (Marcel Arpogaus)
+# changed : 2021-04-22 18:32:56 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # This file is part of the project "short-term probabilistic load
 # forecasting using conditioned Bernstein-polynomial normalizing flows"
@@ -133,7 +133,7 @@ def clean_data(data):
 # extract subset ##############################################################
 def extract_subset(data, subset, seed):
     np.random.seed(seed)
-    ids = data.id.unique()
+    ids = list(sorted(data.id.unique()))
     np.random.shuffle(ids)
     ids = ids[: int(subset * len(ids))]
     return data[data.id.isin(ids)]

@@ -1,52 +1,6 @@
-seed: !store [seed, 42]
-name: &name wavenet_quantile_regression
-
-data_loader: !!python/name:bernstein_paper.data.cer_data_loader.load_data
-data_loader_kwds: !include shared/data_loader_kwds.yaml
-
-model_checkpoints: !join 
-  - !store 
-    - base_path
-    - !join
-      - ./logs/
-      - *name
-  - '/mcp'
-
-mlflow:
-  log_artifacts: $base_path
-  set_tags:
-    name: *name
-    architecture: paper
-
-model: !!python/object/apply:bernstein_paper.models.wavenet_cnn.build_model
-  kwds:
-    history_shape: !!python/tuple [$history_size, 1]
-    meta_shape: !!python/tuple [1, !sum [2, 2, 1]]
-    output_shape: !!python/tuple [$horizon_size, 100]
-    conv_layers: !include shared/wavenet_conv_layers.yaml
-    hidden_layers: !include shared/wavenet_hidden_layers.yaml
-    batch_normalization: false
-    name: *name
-
-compile_kwds:
-  loss: !!python/object/apply:bernstein_paper.losses.PinballLoss {}
-  optimizer: !!python/object/apply:tensorflow.keras.optimizers.Adam
-    kwds:
-      lr: !store [lr, 0.0001]
-  metrics: !switchcmd
-    evaluate:
-      - !!python/object/apply:bernstein_paper.metrics.MeanAbsoluteError
-        kwds:
-          distribution_class: &distribution_class !!python/name:bernstein_paper.distributions.QuantileRegressionDistributionWrapper
-          scale: &max_load !include ../../data/stats/train_max_load
-      - !!python/object/apply:bernstein_paper.metrics.MeanSquaredError
-        kwds:
-          distribution_class: *distribution_class
-          scale: *max_load
-      - !!python/object/apply:bernstein_paper.metrics.ContinuousRankedProbabilityScore
-        kwds:
-          distribution_class: *distribution_class
-          scale: *max_load
-  run_eagerly: !switchcmd {fit: False, evaluate: True}
-
-fit_kwds: !include shared/fit_kwds.yaml
+seed: 5
+model: wavenet
+distribution: quantile_regression
+lr: 0.00001
+epochs: 300
+output_shape: [99]

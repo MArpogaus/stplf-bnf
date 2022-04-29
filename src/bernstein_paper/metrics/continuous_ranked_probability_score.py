@@ -3,8 +3,8 @@
 # file    : continuous_ranked_probability_score.py
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
-# created : 2022-01-20 10:49:40 (Marcel Arpogaus)
-# changed : 2022-01-20 15:47:03 (Marcel Arpogaus)
+# created : 2021-07-29 17:57:39 (Marcel Arpogaus)
+# changed : 2021-12-16 11:32:16 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # This file is part of the project "short-term probabilistic load
 # forecasting using conditioned Bernstein-polynomial normalizing flows"
@@ -26,59 +26,37 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
-
 # REQUIRED PYTHON MODULES #####################################################
 import tensorflow as tf
-
-from absl import logging
+from bernstein_paper.math.integrate import romberg
+from bernstein_paper.util import find_quantile
+from tensorflow_probability.python.internal import dtype_util, tensor_util
 
 
 @tf.function
-def trapez(y, x):
-    d = x[1:] - x[:-1]
-    return tf.reduce_sum(d * (y[1:] + y[:-1]) / 2.0, axis=0)
+def crps(dist, y_true, tol):
+    with tf.name_scope("crps"):
+        dtype = dtype_util.common_dtype([dist, y_true, tol], tf.float64)
+        y_true = tensor_util.convert_nonref_to_tensor(y_true, name="b", dtype=dtype)
+        tol = tensor_util.convert_nonref_to_tensor(tol, name="tol", dtype=dtype)
 
-
-class ContinuousRankedProbabilityScore(tf.keras.metrics.Mean):
-    def __init__(
-        self,
-        distribution_class,
-        name="continuous_ranked_probability_score",
-        scale=1.0,
-        **kwargs
-    ):
-        super().__init__(name=name, **kwargs)
-        self.distribution_class = distribution_class
-        self.scale = scale
-        self.tol = 1e-4
-
-    def update_state(self, y_true, pvector, sample_weight=None):
-        y_true = tf.squeeze(y_true)
-
-        n_points = 10000
-
-        dist = self.distribution_class(pvector)
+        cdf_error_msg = "CDF does not meet tolerance requirements at {} extreme(s)!"
+        integration_warning_msg = "integration accuracy not achieved! ({} > {})"
         cdf = dist.cdf
 
-        # Note that infinite values for xmin and xmax are valid, but
-        # it slows down the resulting quadrature significantly.
-        try:
-            x_min = dist.quantile(self.tol)
-            x_max = dist.quantile(1 - self.tol)
-        except:
-            x_min = -(10 ** (2 + y_true // 10))
-            x_max = 10 ** (2 + y_true // 10)
+        # Find bounds
+        x_min = find_quantile(dist, tol / 10)
+        p = cdf(x_min)
+        tf.debugging.assert_less_equal(p, tol, message=cdf_error_msg.format("lower"))
 
-        # make sure the bounds haven't clipped the cdf.
-        warning = "CDF does not meet tolerance requirements at {} extreme(s)!"
+        x_max = find_quantile(dist, 1 - (tol / 10))
+        p = cdf(x_max)
+        tf.debugging.assert_greater_equal(
+            p, 1 - tol, message=cdf_error_msg.format("upper")
+        )
 
-        if tf.math.reduce_any(cdf(x_min) >= self.tol):
-            logging.warning(warning.format("lower"))
-        if tf.math.reduce_any(cdf(x_max) < (1.0 - self.tol)):
-            logging.warning(warning.format("upper"))
-
-            # CRPS = int_-inf^inf (F(y) - H(x))**2 dy
-            #      = int_-inf^x F(y)**2 dy + int_x^inf (1 - F(y))**2 dy
+        # CRPS = int_-inf^inf (F(y) - H(x))**2 dy
+        #      = int_-inf^x F(y)**2 dy + int_x^inf (1 - F(y))**2 dy
 
         def lhs(x):
             # left hand side of CRPS integral
@@ -88,12 +66,56 @@ class ContinuousRankedProbabilityScore(tf.keras.metrics.Mean):
             # right hand side of CRPS integral
             return tf.square(1.0 - cdf(x))
 
-        lhs_x = tf.linspace(x_min, y_true, n_points)
-        lhs_int = trapez(lhs(lhs_x), lhs_x)
+        lhs_int, err, n = romberg(
+            lhs, x_min, y_true, tol=tol / 10, rtol=tol / 100, max_n=25
+        )
+        rel_err = err / tf.abs(lhs_int)
+        err = tf.where(err < rel_err, err, rel_err)
+        tf.debugging.assert_less_equal(
+            err,
+            tol,
+            tf.strings.format(
+                "lhs " + integration_warning_msg, (tf.reduce_max(err), tol)
+            ),
+        )
 
-        rhs_x = tf.linspace(y_true, x_max, n_points)
-        rhs_int = trapez(rhs(rhs_x), rhs_x)
+        rhs_int, err, n = romberg(
+            rhs, y_true, x_max, tol=tol / 10, rtol=tol / 100, max_n=25
+        )
+        rel_err = err / tf.abs(rhs_int)
+        err = tf.where(err < rel_err, err, rel_err)
+        tf.debugging.assert_less_equal(
+            err,
+            tol,
+            tf.strings.format(
+                "rhs" + integration_warning_msg, (tf.reduce_max(err), tol)
+            ),
+        )
 
         score = lhs_int + rhs_int
+        return score
 
-        return super().update_state(score, sample_weight=sample_weight)
+
+class ContinuousRankedProbabilityScore(tf.keras.metrics.Mean):
+    def __init__(
+        self,
+        distribution_class,
+        name="continuous_ranked_probability_score",
+        **kwargs,
+    ):
+        super().__init__(name=name, **kwargs)
+        self.distribution_class = distribution_class
+        self.tol = 1e-6
+
+    def update_state(self, y_true, pvector, sample_weight=None):
+        orig_dtype = y_true.dtype
+
+        y_true = tf.squeeze(y_true)
+        y_true = tf.cast(y_true, tf.float64)
+        dist = self.distribution_class(tf.cast(pvector, tf.float64))
+
+        score = crps(dist, y_true, self.tol)
+
+        return super().update_state(
+            tf.cast(score, orig_dtype), sample_weight=sample_weight
+        )

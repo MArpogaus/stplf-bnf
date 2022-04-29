@@ -1,0 +1,6 @@
+seed: 1
+model: wavenet
+distribution: gaussian_mixture_model
+lr: 0.00001
+epochs: 300
+output_shape: [3, 3]
