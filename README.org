@@ -61,7 +61,7 @@ The project uses the following python packages:
 - [[https://github.com/tensorflow/tensorflow][tensorflow]]
 - [[https://github.com/tensorflow/probability][tensorflow_probability]]
 
-and my implementation of [[https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector][Bernstein-Polynomials as TensorFlow Probability Bijector]] and my small CLI tool to run these [[https://github.com/MArpogaus/tensorflow-experiments][TensorFlow Experiments]].
+and my implementation of [[https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector][Bernstein-Polynomials as TensorFlow Probability Bijector]], [[https://github.com/MArpogaus/tensorflow_timeseries_dataset][Tensorflow time-series Dataset]], and my small CLI tool to run these [[https://github.com/MArpogaus/tensorflow-experiments][TensorFlow Experiments]].
 
 The dependencies are defined in the respective =setup.py= and are automatically installed by conda, when the experiments are reproduced as described below.
 
