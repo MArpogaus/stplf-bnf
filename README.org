@@ -5,8 +5,8 @@
 [[https://github.com/MArpogaus/stplf-bnf/network/members][https://img.shields.io/github/forks/MArpogaus/stplf-bnf.svg?style=flat-square]]
 [[https://github.com/MArpogaus/stplf-bnf/stargazers][https://img.shields.io/github/stars/MArpogaus/stplf-bnf.svg?style=flat-square]]
 [[https://github.com/MArpogaus/stplf-bnf/issues][https://img.shields.io/github/issues/MArpogaus/stplf-bnf.svg?style=flat-square]]
-[[https://arxiv.org/abs/][https://img.shields.io/badge/arXiv--B31B1B.svg?style=flat-square]]
 [[https://github.com/MArpogaus/stplf-bnf/blob/master/COPYING][https://img.shields.io/github/license/MArpogaus/stplf-bnf.svg?style=flat-square]]
+[[https://arxiv.org/abs/2204.13939][https://img.shields.io/badge/arXiv-2204.13939-B31B1B.svg?style=flat-square]]
 [[https://linkedin.com/in/MArpogaus][https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555]]
 
 * Short-Term Probabilistic Load Forecasting using Conditioned Bernstein-Polynomial Normalizing Flows (STPLF-BNF)
@@ -17,8 +17,8 @@
 :PROPERTIES:
 :CUSTOM_ID: about-the-project
 :END:
-This repository contains the Python code to reproduce the results of our paper [[][Short-Term Density Forecasting of Low-Voltage Load using Bernstein-Polynomial Normalizing Flows]]
-a follow-up work extending our previous publication [[https://arxiv.org/search/?query=Marcel%20Arpogaus&searchtype=author][Probabilistic Short-Term Low-Voltage Load Forecasting using Bernstein-Polynomial Normalizing Flows]].
+This repository contains the Python code to reproduce the results of our paper [[https://arxiv.org/abs/2204.13939][Short-Term Density Forecasting of Low-Voltage Load using Bernstein-Polynomial Normalizing Flows]]
+a follow-up work extending our previous publication [[https://www.climatechange.ai/papers/icml2021/20][Probabilistic Short-Term Low-Voltage Load Forecasting using Bernstein-Polynomial Normalizing Flows]].
 
 In the study we compared the combinations of two different neural network architectures with four different methods to model the conditional marginal distributions in 24h-ahead forecasting.
 The following example shows the 99% and 60% confidence intervals, along with the median (blue) of the predicted conditional probability densities and the measured observations (orange) for one household with unusual high load during the Christmas week.
@@ -198,6 +198,18 @@ Public data from the /CER Smart Metering Project - Electricity Customer Behaviou
 ** Cite
 
 Please consider citing our work in all publications and presentations if the code provided in this repository was involved.
+*** arXiv Preprint
+#+begin_src bibtex
+@unpublished{Arpogaus2022a,
+  title = {Short-{{Term Density Forecasting}} of {{Low-Voltage Load}} Using {{Bernstein-Polynomial Normalizing Flows}}},
+  author = {Arpogaus, Marcel and Voss, Marcus and Sick, Beate and Nigge-Uricher, Mark and Dürr, Oliver},
+  date = {2022-04-29},
+  eprint = {2204.13939},
+  eprinttype = {arxiv},
+  primaryclass = {cs, stat},
+  archiveprefix = {arXiv}
+}
+#+end_src
 *** ICML Workshop Paper
 #+begin_src bibtex
 @inproceedings{Arpogaus2021,
